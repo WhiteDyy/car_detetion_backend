@@ -1,0 +1,16 @@
+spring:
+  profiles:
+    active: mysql
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    serialization:
+      write-dates-as-timestamps: false
+server:
+  port: 8089
+sa-token:
+  token-name: Authorization
+  token-prefix: Bearer
+  jwt-secret-key: 'd0!doc15415B0*4G0`'
+knife4j:
+  enable: true
