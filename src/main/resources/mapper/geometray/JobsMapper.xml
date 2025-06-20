@@ -17,7 +17,6 @@
         <result column="created_at" jdbcType="TIMESTAMP" property="createdAt"/>
     </resultMap>
     <sql id="Base_Column_List">
-        <!--@mbg.generated-->
         id,
         line_id,
         line_type,

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.dhbin.isme.geometray.mapper.CurveQueryMapper">
+    <resultMap id="BaseResultMap" type="cn.dhbin.isme.geometray.domain.entity.CurveQuery">
+        <!--@mbg.generated-->
+        <!--@Table cursequerytable-->
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="lineNo" jdbcType="VARCHAR" property="lineNo"/>
+        <result column="direction" jdbcType="VARCHAR" property="direction"/>
+        <result column="lineName" jdbcType="VARCHAR" property="lineName"/>
+        <result column="startMileage" jdbcType="VARCHAR" property="startMileage"/>
+        <result column="endMileage" jdbcType="VARCHAR" property="endMileage"/>
+        <result column="curveDirection" jdbcType="VARCHAR" property="curveDirection"/>
+        <result column="curveRadius" jdbcType="VARCHAR" property="curveRadius"/>
+        <result column="turningAngle" jdbcType="VARCHAR" property="turningAngle"/>
+        <result column="gaugeType" jdbcType="VARCHAR" property="gaugeType"/>
+        <result column="gaugeWidening" jdbcType="VARCHAR" property="gaugeWidening"/>
+        <result column="superelevation" jdbcType="VARCHAR" property="superelevation"/>
+        <result column="gradientRate" jdbcType="VARCHAR" property="gradientRate"/>
+        <result column="startTangentLength" jdbcType="VARCHAR" property="startTangentLength"/>
+        <result column="startTransitionLength" jdbcType="VARCHAR" property="startTransitionLength"/>
+        <result column="endTransitionLength" jdbcType="VARCHAR" property="endTransitionLength"/>
+        <result column="endTangentLength" jdbcType="VARCHAR" property="endTangentLength"/>
+        <result column="totalCurveLength" jdbcType="VARCHAR" property="totalCurveLength"/>
+        <result column="averageSpeed" jdbcType="VARCHAR" property="averageSpeed"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        <!--@mbg.generated-->
+        id,
+        lineNo,
+        direction,
+        lineName,
+        startMileage,
+        endMileage,
+        curveDirection,
+        curveRadius,
+        turningAngle,
+        gaugeType,
+        gaugeWidening,
+        superelevation,
+        gradientRate,
+        startTangentLength,
+        startTransitionLength,
+        endTransitionLength,
+        endTangentLength,
+        totalCurveLength,
+        averageSpeed
+    </sql>
+
+    <select id="queryPage" parameterType="cn.dhbin.isme.geometray.domain.requeset.CurveQueryRequest"
+            resultMap="BaseResultMap">
+        <!--@mbg.generated-->
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM curse_query_table
+        <where>
+            <if test="lineNo != null and lineNo != ''">
+                AND lineNo LIKE CONCAT('%', #{lineNo,jdbcType=VARCHAR}, '%')
+            </if>
+            <if test="lineName != null and lineName != ''">
+                AND lineName LIKE CONCAT('%', #{lineName,jdbcType=VARCHAR}, '%')
+            </if>
+            <if test="startMileage != null and startMileage != ''">
+                AND startMileage <![CDATA[>= #{startMileage,jdbcType=VARCHAR}]]>
+            </if>
+            <if test="endMileage != null and endMileage != ''">
+                AND endMileage <![CDATA[<= #{endMileage,jdbcType=VARCHAR}]]>
+            </if>
+            <if test="direction != null and direction != ''">
+                AND direction LIKE CONCAT('%', #{direction,jdbcType=VARCHAR}, '%')
+            </if>
+            <if test="curveDirection != null and curveDirection != ''">
+                AND curveDirection LIKE CONCAT('%', #{curveDirection,jdbcType=VARCHAR}, '%')
+            </if>
+            <if test="gaugeType != null and gaugeType != ''">
+                AND gaugeType LIKE CONCAT('%', #{gaugeType,jdbcType=VARCHAR}, '%')
+            </if>
+        </where>
+    </select>
+</mapper>

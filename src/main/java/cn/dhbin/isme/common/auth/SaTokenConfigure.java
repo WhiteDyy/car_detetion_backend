@@ -1,5 +1,6 @@
 package cn.dhbin.isme.common.auth;
 
+import cn.dev33.satoken.context.SaHolder;
 import cn.dev33.satoken.interceptor.SaInterceptor;
 import cn.dev33.satoken.jwt.StpLogicJwtForStateless;
 import cn.dev33.satoken.stp.StpLogic;
@@ -23,16 +24,37 @@ public class SaTokenConfigure implements WebMvcConfigurer {
 
     public static final String JWT_CURRENT_ROLE_KEY = "currentRoleCode";
 
+//    @Bean
+//    public StpLogic getStpLogicJwt() {
+//        return new StpLogicJwtForStateless();
+//    }
+
     @Bean
     public StpLogic getStpLogicJwt() {
-        return new StpLogicJwtForStateless();
+        return new StpLogicJwtForStateless() {
+            @Override
+            public String getTokenValue() {
+                String path = SaHolder.getRequest().getRequestPath();
+
+                // ✅ 如果是 /sse，则返回 null，表示无需 token
+                if (path.startsWith("/sse")) {
+                    return null;
+                }
+
+                // 默认从请求头中取 token
+                return super.getTokenValue();
+            }
+        };
     }
+
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(new SaInterceptor(handle -> StpUtil.checkLogin()))
             .addPathPatterns("/**")
             .excludePathPatterns("/auth/login")
+            .excludePathPatterns("/sse/**")
+            .excludePathPatterns("/ws/**")
             .excludePathPatterns("/auth/captcha")
             .excludePathPatterns("/doc.html")
             .excludePathPatterns("/webjars/**")
