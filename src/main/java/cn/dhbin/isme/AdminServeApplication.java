@@ -11,7 +11,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * @author dhb
  */
 @SpringBootApplication
-//@EnableScheduling
+@EnableScheduling
 public class AdminServeApplication {
 
     public static void main(String[] args) {
