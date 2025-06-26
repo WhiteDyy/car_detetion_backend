@@ -24,10 +24,6 @@ public class SaTokenConfigure implements WebMvcConfigurer {
 
     public static final String JWT_CURRENT_ROLE_KEY = "currentRoleCode";
 
-//    @Bean
-//    public StpLogic getStpLogicJwt() {
-//        return new StpLogicJwtForStateless();
-//    }
 
     @Bean
     public StpLogic getStpLogicJwt() {
@@ -51,15 +47,15 @@ public class SaTokenConfigure implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(new SaInterceptor(handle -> StpUtil.checkLogin()))
-            .addPathPatterns("/**")
-            .excludePathPatterns("/auth/login")
-            .excludePathPatterns("/sse/**")
-            .excludePathPatterns("/ws/**")
-            .excludePathPatterns("/auth/captcha")
-            .excludePathPatterns("/doc.html")
-            .excludePathPatterns("/webjars/**")
-            .excludePathPatterns("/favicon.ico")
-            .excludePathPatterns("/v3/api-docs/**")
+                .addPathPatterns("/**")
+                .excludePathPatterns("/auth/login")
+                .excludePathPatterns("/sse/**")
+                .excludePathPatterns("/ws/**")
+                .excludePathPatterns("/auth/captcha")
+                .excludePathPatterns("/doc.html")
+                .excludePathPatterns("/webjars/**")
+                .excludePathPatterns("/favicon.ico")
+                .excludePathPatterns("/v3/api-docs/**")
         ;
     }
 

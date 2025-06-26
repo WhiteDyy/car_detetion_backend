@@ -40,4 +40,8 @@ logging:
     cn.dev33: DEBUG
 knife4j:
   enable: true
-
+image:
+  url:
+    prefix: http://localhost:8098/images/
+  storage:
+    path: ./uploaded_images
