@@ -49,6 +49,7 @@ public class SaTokenConfigure implements WebMvcConfigurer {
         registry.addInterceptor(new SaInterceptor(handle -> StpUtil.checkLogin()))
                 .addPathPatterns("/**")
                 .excludePathPatterns("/auth/login")
+                .excludePathPatterns("/surface_disease/**")
                 .excludePathPatterns("/sse/**")
                 .excludePathPatterns("/ws/**")
                 .excludePathPatterns("/auth/captcha")
