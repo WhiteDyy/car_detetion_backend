@@ -22,6 +22,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Service
@@ -42,10 +43,23 @@ public class ImageProcessingService {
     private Path storageDirectory;
 
 
-    private final List<String> urlBuffer = new ArrayList<>(); // 存储 URL 的缓冲区
-    private final AtomicLong lastBroadcastTime = new AtomicLong(0); // 上次推送时间
-    private static final long MIN_BROADCAST_INTERVAL = 2000; // 推送间隔（2秒）
-    private static final int MAX_BATCH_SIZE = 10; // 最大批量推送数量
+//    private final List<String> urlBuffer = new ArrayList<>(); // 存储 URL 的缓冲区
+//    private final AtomicLong lastBroadcastTime = new AtomicLong(0); // 上次推送时间
+//    private static final long MIN_BROADCAST_INTERVAL = 500; // 推送间隔（2秒）
+//    private static final int MAX_BATCH_SIZE = 5; // 最大批量推送数量
+
+    // --- 配置项 ---
+    // 当缓冲区达到此数量时，立即推送
+    private static final int MAX_BATCH_SIZE = 5; // 建议减小此值，例如 5 或 10
+    // 无论数量多少，超过此时间间隔（毫秒）就必须推送一次
+    private static final long MIN_BROADCAST_INTERVAL = 500L; // 500毫秒
+
+    // --- 成员变量 ---
+    // 使用线程安全的 CopyOnWriteArrayList 存储 URL 缓冲区
+    private final List<String> urlBuffer = new CopyOnWriteArrayList<>();
+    // 记录上次推送时间的原子长整数
+    private final AtomicLong lastBroadcastTime = new AtomicLong(System.currentTimeMillis());
+
 
     public void ImageService(Path storageDirectory, String imageUrlPrefix, SseManager sseManager) {
         this.storageDirectory = storageDirectory;
@@ -70,58 +84,59 @@ public class ImageProcessingService {
         }
     }
 
-    /**
-     * 处理接收到的图片数据并广播其URL
-     * 使用 @Async 注解，使其在独立的线程中异步执行
-     *
-     * @param imageData 从ZeroMQ接收到的原始图片字节
-     */
-//    @Async // 关键！让ZMQ监听线程可以快速返回
+
+//    @Async
 //    public void processAndBroadcast(byte[] imageData) {
 //        if (imageData == null || imageData.length == 0) {
 //            logger.warn("Received empty image data. Skipping.");
 //            return;
 //        }
 //
-//        // 1. 生成唯一的文件名 (例如： a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6.jpg)
-////        String filename = UUID.randomUUID().toString() + ".jpg";
-////        Path destinationFile = this.storageDirectory.resolve(filename);
-////         1. 获取带毫秒的时间戳字符串
+//        // 生成唯一文件名
 //        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmssSSS"));
-//
-//        // 2. 获取UUID的一部分作为唯一后缀 (取前8位即可有效避免冲突)
 //        String uniqueId = UUID.randomUUID().toString().substring(0, 8);
-//
-//        // 3. 组合成最终文件名
 //        String filename = timestamp + "_" + uniqueId + ".jpg";
 //        Path destinationFile = this.storageDirectory.resolve(filename);
 //
-//
 //        try {
-//            // 2. 将字节写入文件
+//            // 保存图片
+//            Files.createDirectories(this.storageDirectory);
 //            Files.write(destinationFile, imageData);
 //            logger.info("Successfully saved image to {}", destinationFile.toAbsolutePath());
 //
-//
-//            // 3. 构建可公开访问的URL
+//            // 添加 URL 到缓冲区
 //            String imageUrl = imageUrlPrefix + filename;
+//            synchronized (urlBuffer) {
+//                urlBuffer.add(imageUrl);
 //
-//            JSONObject jsonObject = new JSONObject().set("url", imageUrl);
-//            // 创建 JSON 对象
+//                // 检查是否需要推送（时间间隔或数量达到阈值）
+//                long currentTime = System.currentTimeMillis();
+//                if (urlBuffer.size() >= MAX_BATCH_SIZE || currentTime - lastBroadcastTime.get() >= MIN_BROADCAST_INTERVAL) {
 //
-//            SseEmitter.SseEventBuilder eventBuilder = SseEmitter.event().name("surface_img").data(jsonObject);
-//            // 4. 通过SSE服务广播这个URL
-//            sseManager.broadcast(SurfaceSseController.SURFACE_IMAGE_TOPIC, eventBuilder);
+//                    // 创建 JSON 对象，包含 URL 列表
+//                    JSONObject jsonObject = new JSONObject().set("urls", new ArrayList<>(urlBuffer));
+//                    SseEmitter.SseEventBuilder eventBuilder = SseEmitter.event().name("surface_img").data(jsonObject);
 //
-//            // 等待 1 秒
-//            Thread.sleep(1000);
+//                    // 推送
+//                    sseManager.broadcast(SurfaceSseController.SURFACE_IMAGE_TOPIC, eventBuilder);
+//                    logger.info("Broadcasted {} image URLs", urlBuffer.size());
 //
+//                    // 清空缓冲区并更新时间
+//                    urlBuffer.clear();
+//                    lastBroadcastTime.set(currentTime);
+//                }
+//            }
 //        } catch (IOException e) {
 //            logger.error("Failed to save image file or broadcast URL.", e);
-//        } catch (InterruptedException e) {
-//            throw new RuntimeException(e);
 //        }
 //    }
+
+
+    /**
+     * 异步处理图像数据、保存并根据策略广播URL。
+     *
+     * @param imageData 图像的字节数组
+     */
     @Async
     public void processAndBroadcast(byte[] imageData) {
         if (imageData == null || imageData.length == 0) {
@@ -136,31 +151,41 @@ public class ImageProcessingService {
         Path destinationFile = this.storageDirectory.resolve(filename);
 
         try {
-            // 保存图片
+            // 1. 保存图片到文件系统
             Files.createDirectories(this.storageDirectory);
             Files.write(destinationFile, imageData);
             logger.info("Successfully saved image to {}", destinationFile.toAbsolutePath());
 
-            // 添加 URL 到缓冲区
+            // 2. 将 URL 添加到缓冲区
             String imageUrl = imageUrlPrefix + filename;
-            synchronized (urlBuffer) {
-                urlBuffer.add(imageUrl);
+            urlBuffer.add(imageUrl);
 
-                // 检查是否需要推送（时间间隔或数量达到阈值）
-                long currentTime = System.currentTimeMillis();
-//                if (urlBuffer.size() >= MAX_BATCH_SIZE || currentTime - lastBroadcastTime.get() >= MIN_BROADCAST_INTERVAL) {
-                if (urlBuffer.size() >= MAX_BATCH_SIZE ) {
-                    // 创建 JSON 对象，包含 URL 列表
-                    JSONObject jsonObject = new JSONObject().set("urls", new ArrayList<>(urlBuffer));
-                    SseEmitter.SseEventBuilder eventBuilder = SseEmitter.event().name("surface_img").data(jsonObject);
+            long currentTime = System.currentTimeMillis();
 
-                    // 推送
-                    sseManager.broadcast(SurfaceSseController.SURFACE_IMAGE_TOPIC, eventBuilder);
-                    logger.info("Broadcasted {} image URLs", urlBuffer.size());
+            // 3. 检查是否满足推送条件（核心改动）
+            boolean shouldBroadcast = urlBuffer.size() >= MAX_BATCH_SIZE ||
+                    currentTime - lastBroadcastTime.get() >= MIN_BROADCAST_INTERVAL;
 
-                    // 清空缓冲区并更新时间
-                    urlBuffer.clear();
-                    lastBroadcastTime.set(currentTime);
+            if (shouldBroadcast && !urlBuffer.isEmpty()) {
+                // 使用 synchronized 确保广播和清空操作的原子性
+                synchronized (urlBuffer) {
+                    // 再次检查，防止多线程下的重复广播
+                    if (!urlBuffer.isEmpty()) {
+                        // 创建 JSON 对象，包含 URL 列表
+                        JSONObject jsonObject = new JSONObject().set("urls", new ArrayList<>(urlBuffer));
+                        SseEmitter.SseEventBuilder eventBuilder = SseEmitter.event()
+                                .name("surface_img") // 与前端 addEventListener 名称一致
+                                .data(jsonObject); // 推送 JSON 字符串
+
+                        // 推送
+                        // 假设 sseManager 和 topic 的定义与您项目中一致
+                        sseManager.broadcast(SurfaceSseController.SURFACE_IMAGE_TOPIC, eventBuilder);
+                        logger.info("Broadcasted {} image URLs.", urlBuffer.size());
+
+                        // 清空缓冲区并更新时间
+                        urlBuffer.clear();
+                        lastBroadcastTime.set(currentTime);
+                    }
                 }
             }
         } catch (IOException e) {
