@@ -21,8 +21,8 @@ public class ZmqListenerService implements CommandLineRunner {
                 // 创建一个PULL类型的套接字
                 ZMQ.Socket socket = context.createSocket(ZMQ.PULL);
                 // 绑定到端口5555
-                socket.bind("tcp://*:5555");
-                System.out.println("ZeroMQ PULL socket listening on tcp://*:5555");
+                socket.bind("tcp://*:6667");
+                System.out.println("ZeroMQ PULL socket listening on tcp://*:6667");
 
                 while (!Thread.currentThread().isInterrupted()) {
                     // 阻塞式等待并接收消息（图像的二进制数据）
