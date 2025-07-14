@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -167,10 +168,35 @@ public class GeometrySseController {
     // 定义主题名称
     public static final String GEOMETRY_DATA_TOPIC = "geometryData";
 
+    public static final String SENSOR_DATA_TOPIC = "sensorData";
+
     // 用于模拟动态数据的计数器
     private double currentMileage = 0.0;
     private int sleeperDisplayCounter = 1;
     private final AtomicLong tagCounter = new AtomicLong(1);
+
+    // 用于处理传感器数据的线程池
+    private final ScheduledExecutorService sensorDataExecutor = Executors.newSingleThreadScheduledExecutor();
+
+    private void processSensorMessages() {
+        try {
+            SensorData sensorData = RabbitMQConsumer.MESSAGE_QUEUE.poll(100, TimeUnit.MILLISECONDS);
+            if (sensorData != null) {
+                String jsonData = objectMapper.writeValueAsString(sensorData);
+                log.debug("Sending sensorData: {}", jsonData);
+                SseEmitter.SseEventBuilder event = SseEmitter.event()
+                        .name("sensor-data")
+                        .data(jsonData);
+                sseManager.broadcast(SENSOR_DATA_TOPIC, event);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.info("Sensor message processing thread interrupted.");
+        } catch (Exception e) {
+            log.error("Error in processSensorMessages task: {}", e.getMessage(), e);
+        }
+    }
+
 
     @GetMapping(path = "/geometry/live", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter handleSse() {
@@ -205,6 +231,54 @@ public class GeometrySseController {
 
         return emitter;
     }
+
+
+    @GetMapping(path = "/sensor", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter handleSensorSse() {
+        SseEmitter emitter = new SseEmitter(90_000L); // 90秒超时
+        sseManager.register(SENSOR_DATA_TOPIC, emitter);
+
+        // 立即发送一次初始心跳
+        try {
+            emitter.send(SseEmitter.event().name("heartbeat").data("connected").comment("initial connection"));
+        } catch (IOException e) {
+            log.warn("Failed to send initial heartbeat to new emitter: {}", e.getMessage());
+        }
+
+        // 启动传感器数据处理任务
+        sensorDataExecutor.scheduleAtFixedRate(() -> {
+            try {
+                processSensorMessages();
+            } catch (Exception e) {
+                log.error("Error processing sensor messages", e);
+            }
+        }, 0, 100, TimeUnit.MILLISECONDS); // 每100毫秒检查一次消息队列
+
+        setupEmitterCleanup(emitter, null);
+        return emitter;
+    }
+
+    private void setupEmitterCleanup(SseEmitter emitter, ScheduledExecutorService executor) {
+        emitter.onCompletion(() -> {
+            log.info("SSE connection closed");
+            if (executor != null) {
+                executor.shutdownNow();
+            }
+        });
+        emitter.onTimeout(() -> {
+            log.info("SSE connection timed out");
+            if (executor != null) {
+                executor.shutdownNow();
+            }
+        });
+        emitter.onError((e) -> {
+            log.error("SSE connection error", e);
+            if (executor != null) {
+                executor.shutdownNow();
+            }
+        });
+    }
+
 
     private void pushData() {
         // --- 开始构建模拟数据 ---

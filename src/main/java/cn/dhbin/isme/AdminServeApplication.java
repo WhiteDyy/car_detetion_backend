@@ -12,7 +12,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * @author dhb
  */
 @SpringBootApplication
-//@EnableScheduling
+@EnableScheduling
 @EnableAsync
 public class AdminServeApplication {
 

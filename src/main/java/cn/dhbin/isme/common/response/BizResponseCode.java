@@ -30,10 +30,18 @@ public enum BizResponseCode {
     ERR_11006(11006, "非法操作"),
 
 
-    ERR_30001(30001, "预览环境不支持此操作");
+    ERR_30001(30001, "预览环境不支持此操作"),
+
+    ERR_20000(20000, "作业插入失败"),
+
+    ERR_20001(20001,"更新作业记录失败，可能记录已被修改"),
+
+
+            ;
+
 
     private final int code;
 
     private final String msg;
 
-}
+    }
