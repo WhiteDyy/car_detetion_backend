@@ -1,0 +1,55 @@
+spring:
+  profiles:
+    active: mysql
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      adjust-dates-to-context-time-zone: false
+  rabbitmq:
+#    host: 49.235.164.252
+    host: 192.168.3.84
+    port: 5672
+    username: admin
+    password: admin
+    virtual-host: /
+    listener:
+      simple:
+        acknowledge-mode: manual
+  jpa:
+    hibernate:
+      ddl-auto: update  # 自动更新表结构，生产环境可改为 validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        jdbc.batch_size: 100  # 批量插入大小
+        order_inserts: true   # 优化插入顺序
+        order_updates: true   # 优化更新顺序
+  datasource:
+    hikari:
+      maximum-pool-size: 10  # 连接池最大连接数
+      minimum-idle: 5        # 最小空闲连接
+      connection-timeout: 30000  # 连接超时（毫秒）
+  mvc:
+    static-path-pattern: /**
+server:
+  port: 8089
+sa-token:
+  token-name: Authorization
+  token-prefix: Bearer
+  jwt-secret-key: 'd0!doc15415B0*4G0`'
+logging:
+  level:
+    cn.dev33: DEBUG
+knife4j:
+  enable: true
+image:
+  url:
+    prefix: /api/surface_disease/
+  storage:
+    path: src/main/resources/static/images
+generate-report:
+  template-url: D:/daima/template.docx
+  output-url: D:/daima/
