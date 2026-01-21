@@ -1,0 +1,31 @@
+package cn.dhbin.isme.pms.convert;
+
+import cn.dhbin.isme.pms.domain.dto.RolePageDto;
+import cn.dhbin.isme.pms.domain.entity.Role;
+import javax.annotation.processing.Generated;
+import org.springframework.stereotype.Component;
+
+@Generated(
+    value = "org.mapstruct.ap.MappingProcessor",
+    date = "2025-12-16T15:37:17+0800",
+    comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.9 (Microsoft)"
+)
+@Component
+public class RoleToRolePageDtoImpl implements RoleToRolePageDto {
+
+    @Override
+    public RolePageDto to(Role arg0) {
+        if ( arg0 == null ) {
+            return null;
+        }
+
+        RolePageDto rolePageDto = new RolePageDto();
+
+        rolePageDto.setId( arg0.getId() );
+        rolePageDto.setCode( arg0.getCode() );
+        rolePageDto.setName( arg0.getName() );
+        rolePageDto.setEnable( arg0.getEnable() );
+
+        return rolePageDto;
+    }
+}

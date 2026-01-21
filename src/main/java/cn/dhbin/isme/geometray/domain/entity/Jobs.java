@@ -70,6 +70,11 @@ public class Jobs implements Convert {
     private String description;
 
     /**
+     * 速度 (km/h)
+     */
+    private String speed;
+
+    /**
      * 记录创建时间
      */
     private LocalDateTime createdAt;

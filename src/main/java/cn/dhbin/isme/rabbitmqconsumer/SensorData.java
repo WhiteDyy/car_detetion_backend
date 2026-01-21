@@ -128,11 +128,22 @@ public class SensorData {
 
     private Integer mileage;
 
-    private Integer sleeper;
+    private Double sleeper;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime startTime;
 
+    /**
+     * 关联的任务ID
+     */
+    @Column(name = "job_id")
+    private Long jobId;
+    
+    /**
+     * 编码器值（兼容字段，从codee40映射）
+     */
+    @Column(name = "codee40")
+    private Integer codee40;
 
     @Override
     public String toString() {

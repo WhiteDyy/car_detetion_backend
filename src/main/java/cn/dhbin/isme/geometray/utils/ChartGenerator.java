@@ -260,6 +260,192 @@ public class ChartGenerator {
     }
 
     /**
+     * 创建散点图
+     * 用于轨距、水平、高低、轨向等重复性检测
+     */
+    public static void createScatterChart(XWPFDocument document, String chartTitle,
+                                         String xAxisTitle, String yAxisTitle,
+                                         List<String> xLabels, List<Double> yValues) {
+        try {
+            // 创建图表
+            XWPFChart chart = document.createChart(15 * 500000, 10 * 500000);
+
+            // 设置图表标题
+            if (chartTitle != null) {
+                chart.setTitleText(chartTitle);
+                chart.setTitleOverlay(false);
+            }
+
+            // 创建坐标轴
+            XDDFCategoryAxis categoryAxis = chart.createCategoryAxis(AxisPosition.BOTTOM);
+            XDDFValueAxis valueAxis = chart.createValueAxis(AxisPosition.LEFT);
+            valueAxis.setCrosses(AxisCrosses.AUTO_ZERO);
+
+            // 准备数据
+            XDDFDataSource<String> catDataSource = XDDFDataSourcesFactory.fromArray(
+                    xLabels.toArray(new String[0])
+            );
+            XDDFNumericalDataSource<Double> valDataSource = XDDFDataSourcesFactory.fromArray(
+                    yValues.toArray(new Double[0])
+            );
+
+            // 创建散点图数据
+            XDDFScatterChartData data = (XDDFScatterChartData) chart.createData(
+                    ChartTypes.SCATTER, categoryAxis, valueAxis
+            );
+
+            // 添加数据系列
+            XDDFScatterChartData.Series series = (XDDFScatterChartData.Series) data.addSeries(
+                    catDataSource, valDataSource
+            );
+            series.setTitle("检测值", null);
+
+            // 设置系列颜色为红色（平均值曲线）
+            XDDFSolidFillProperties fill = new XDDFSolidFillProperties(
+                    XDDFColor.from(new byte[]{(byte) 255, 0, 0})
+            );
+            series.setFillProperties(fill);
+
+            // 绘制图表
+            chart.plot(data);
+
+            // 设置坐标轴标题
+            categoryAxis.setTitle(xAxisTitle);
+            valueAxis.setTitle(yAxisTitle);
+
+            // 添加空行
+            addEmptyParagraph(document);
+
+        } catch (Exception e) {
+            throw new RuntimeException("创建散点图失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 创建多系列散点图（用于重复性检测：曲线1、曲线2、曲线3、平均值）
+     */
+    public static void createMultiSeriesScatterChart(XWPFDocument document, String chartTitle,
+                                                    String xAxisTitle, String yAxisTitle,
+                                                    List<String> xLabels,
+                                                    List<Double> curve1, List<Double> curve2, List<Double> curve3,
+                                                    List<Double> average, List<Double> upperLimit, List<Double> lowerLimit) {
+        try {
+            // 创建图表
+            XWPFChart chart = document.createChart(15 * 500000, 10 * 500000);
+
+            // 设置图表标题
+            if (chartTitle != null) {
+                chart.setTitleText(chartTitle);
+                chart.setTitleOverlay(false);
+            }
+
+            // 创建坐标轴
+            XDDFCategoryAxis categoryAxis = chart.createCategoryAxis(AxisPosition.BOTTOM);
+            XDDFValueAxis valueAxis = chart.createValueAxis(AxisPosition.LEFT);
+            valueAxis.setCrosses(AxisCrosses.AUTO_ZERO);
+
+            // 准备分类数据
+            XDDFDataSource<String> catDataSource = XDDFDataSourcesFactory.fromArray(
+                    xLabels.toArray(new String[0])
+            );
+
+            // 创建散点图数据
+            XDDFScatterChartData data = (XDDFScatterChartData) chart.createData(
+                    ChartTypes.SCATTER, categoryAxis, valueAxis
+            );
+
+            // 添加曲线1
+            if (curve1 != null && !curve1.isEmpty()) {
+                XDDFNumericalDataSource<Double> valDataSource1 = XDDFDataSourcesFactory.fromArray(
+                        curve1.toArray(new Double[0])
+                );
+                XDDFScatterChartData.Series series1 = (XDDFScatterChartData.Series) data.addSeries(
+                        catDataSource, valDataSource1
+                );
+                series1.setTitle("曲线1", null);
+                setSeriesColor(series1, 0);
+            }
+
+            // 添加曲线2
+            if (curve2 != null && !curve2.isEmpty()) {
+                XDDFNumericalDataSource<Double> valDataSource2 = XDDFDataSourcesFactory.fromArray(
+                        curve2.toArray(new Double[0])
+                );
+                XDDFScatterChartData.Series series2 = (XDDFScatterChartData.Series) data.addSeries(
+                        catDataSource, valDataSource2
+                );
+                series2.setTitle("曲线2", null);
+                setSeriesColor(series2, 1);
+            }
+
+            // 添加曲线3
+            if (curve3 != null && !curve3.isEmpty()) {
+                XDDFNumericalDataSource<Double> valDataSource3 = XDDFDataSourcesFactory.fromArray(
+                        curve3.toArray(new Double[0])
+                );
+                XDDFScatterChartData.Series series3 = (XDDFScatterChartData.Series) data.addSeries(
+                        catDataSource, valDataSource3
+                );
+                series3.setTitle("曲线3", null);
+                setSeriesColor(series3, 2);
+            }
+
+            // 添加平均值曲线（红色）
+            if (average != null && !average.isEmpty()) {
+                XDDFNumericalDataSource<Double> valDataSourceAvg = XDDFDataSourcesFactory.fromArray(
+                        average.toArray(new Double[0])
+                );
+                XDDFScatterChartData.Series seriesAvg = (XDDFScatterChartData.Series) data.addSeries(
+                        catDataSource, valDataSourceAvg
+                );
+                seriesAvg.setTitle("平均值", null);
+                // 设置红色
+                XDDFSolidFillProperties fill = new XDDFSolidFillProperties(
+                        XDDFColor.from(new byte[]{(byte) 255, 0, 0})
+                );
+                seriesAvg.setFillProperties(fill);
+            }
+
+            // 添加均值上限（均值+0.225）
+            if (upperLimit != null && !upperLimit.isEmpty()) {
+                XDDFNumericalDataSource<Double> valDataSourceUpper = XDDFDataSourcesFactory.fromArray(
+                        upperLimit.toArray(new Double[0])
+                );
+                XDDFScatterChartData.Series seriesUpper = (XDDFScatterChartData.Series) data.addSeries(
+                        catDataSource, valDataSourceUpper
+                );
+                seriesUpper.setTitle("均值上限（均值+0.225）", null);
+                setSeriesColor(seriesUpper, 4);
+            }
+
+            // 添加均值下限（均值-0.225）
+            if (lowerLimit != null && !lowerLimit.isEmpty()) {
+                XDDFNumericalDataSource<Double> valDataSourceLower = XDDFDataSourcesFactory.fromArray(
+                        lowerLimit.toArray(new Double[0])
+                );
+                XDDFScatterChartData.Series seriesLower = (XDDFScatterChartData.Series) data.addSeries(
+                        catDataSource, valDataSourceLower
+                );
+                seriesLower.setTitle("均值下限（均值-0.225）", null);
+                setSeriesColor(seriesLower, 5);
+            }
+
+            // 绘制图表
+            chart.plot(data);
+
+            // 设置坐标轴标题
+            categoryAxis.setTitle(xAxisTitle);
+            valueAxis.setTitle(yAxisTitle);
+
+            // 添加空行
+            addEmptyParagraph(document);
+
+        } catch (Exception e) {
+            throw new RuntimeException("创建多系列散点图失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * 添加空段落
      */
     private static void addEmptyParagraph(XWPFDocument document) {

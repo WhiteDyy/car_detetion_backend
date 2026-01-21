@@ -52,6 +52,10 @@ public class JobsDto {
      */
     private String description;
     /**
+     * 速度 (km/h)
+     */
+    private String speed;
+    /**
      * 记录创建时间
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

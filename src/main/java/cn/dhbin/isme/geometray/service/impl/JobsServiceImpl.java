@@ -74,63 +74,71 @@ public class JobsServiceImpl implements JobsService {
     }
 
     @Override
+    public Jobs saveJob(Jobs job) {
+        if (job.getId() == null) {
+            // 新增 - 使用 insertSelective 可以避免插入 null 值
+            // 但 MyBatis-Plus 的 insert 方法也会正确处理 null 值
+            jobsMapper.insert(job);
+        } else {
+            // 更新 - 使用 updateById 会更新所有字段，包括 null 值
+            // 如果需要只更新非 null 字段，可以使用 updateByIdSelective，但 MyBatis-Plus 默认没有这个方法
+            jobsMapper.updateById(job);
+        }
+        return job;
+    }
+
+    @Override
     public byte[] generateReportZip(List<Integer> ids, List<Map<String, String>> forms) {
-        // 创建一个列表，用于存储生成的文件路径
-        List<String> files = new ArrayList<>();
         List<Jobs> jobs = jobsMapper.selectBatchIds(ids);
 
-        // 将forms转换为以jobId为键的Map，便于快速查找
-        Map<String, Map<String, String>> formMap = forms.stream()
-                .collect(Collectors.toMap(
-                        form -> String.valueOf(form.get("jobId")),
-                        form -> form
-                ));
+        if (jobs.isEmpty()) {
+            throw new RuntimeException("没有找到选中的任务");
+        }
 
-        for (Jobs job : jobs) {
-            InputStream templateStream = null;
-            try {
-                // 加载模板文件
-                templateStream = new FileInputStream(templateUrl);
-
-                if (templateStream == null) {
-                    System.err.println("模板文件未找到");
-                    continue;
-                }
-
-                // 获取对应的表单数据
-                Map<String, String> formData = formMap.get(String.valueOf(job.getId()));
-
-                // 使用新的服务生成带图表的文档
-                byte[] documentBytes = reportChartService.generateDocumentWithChart(job, formData, templateStream);
-
-                // 输出文件，生成报表
-                String outputPath = outputUrl + "report_" + job.getId() + "_" + System.currentTimeMillis() + ".docx";
-                Files.write(Paths.get(outputPath), documentBytes);
-                files.add(outputPath);
-
-            } catch (Exception e) {
-                System.err.println("生成任务 " + job.getId() + " 的报表失败: " + e.getMessage());
-                e.printStackTrace();
-                // 继续处理其他任务
-                continue;
-            } finally {
-                // 确保流被关闭
-                if (templateStream != null) {
-                    try {
-                        templateStream.close();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
+        // 获取第一个任务的表单数据（统一表单，应用到所有任务）
+        Map<String, String> formData = null;
+        if (forms != null && !forms.isEmpty()) {
+            // 使用第一个表单数据作为统一表单
+            formData = forms.get(0);
+            // 移除jobId字段，因为这是统一表单
+            if (formData != null) {
+                formData = new HashMap<>(formData);
+                formData.remove("jobId");
             }
         }
 
-        if (files.isEmpty()) {
-            throw new RuntimeException("没有成功生成任何报表文件");
-        }
+        InputStream templateStream = null;
+        try {
+            // 加载模板文件
+            templateStream = new FileInputStream(templateUrl);
 
-        // 将所有生成的docx文件打包成zip并返回字节数组
-        return createZipFile(files);
+            if (templateStream == null) {
+                throw new RuntimeException("模板文件未找到: " + templateUrl);
+            }
+
+            // 使用第一个任务作为主任务（用于基本信息），但合并所有任务的数据
+            Jobs mainJob = jobs.get(0);
+            
+            // 使用新的服务生成带图表的文档（合并所有任务的数据）
+            byte[] documentBytes = reportChartService.generateDocumentWithChartForMultipleJobs(
+                    mainJob, jobs, formData, templateStream);
+
+            return documentBytes;
+
+        } catch (Exception e) {
+            System.err.println("生成报表失败: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("生成报表失败: " + e.getMessage(), e);
+        } finally {
+            // 确保流被关闭
+            if (templateStream != null) {
+                try {
+                    templateStream.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 
     /**

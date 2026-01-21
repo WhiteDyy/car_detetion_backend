@@ -17,7 +17,7 @@ public class GeometrySensorData {
     private Double acc2;
     private Double acc3;
     private Integer codee40;
-    private Integer sleeper;
+    private Double sleeper;
     private Integer mileage;
     private Integer codee40A;
     private Integer codee40B;

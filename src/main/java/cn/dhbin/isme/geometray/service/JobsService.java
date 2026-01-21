@@ -22,4 +22,11 @@ public interface JobsService extends IService<Jobs> {
     Page<Jobs> queryPage(JobsPageRequest request);
 
     byte[] generateReportZip(List<Integer> ids, List<Map<String, String>> forms);
+    
+    /**
+     * 保存作业记录
+     * @param job 作业实体
+     * @return 保存后的作业实体
+     */
+    Jobs saveJob(Jobs job);
 }
