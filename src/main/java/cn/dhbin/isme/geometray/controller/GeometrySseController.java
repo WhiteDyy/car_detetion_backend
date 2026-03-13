@@ -170,8 +170,6 @@
 //            measurements.put("右轨向", 1.0 + Math.random() * 1);
 //            measurements.put("水平", Math.random() * 2 - 1);
 //            measurements.put("三角坑", Math.random() * 0.5);
-//            measurements.put("垂直磨耗", 0.5 + Math.random() * 0.5);
-//            measurements.put("侧面磨耗", 0.3 + Math.random() * 0.3);
 //            dataPoint.setMeasurements(measurements);
 //
 //            // 3. 模拟电子标签 (每10米)
@@ -226,6 +224,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -252,18 +252,38 @@ public class GeometrySseController {
     private volatile boolean sensorExecutorStarted = false;
     private volatile boolean geometryExecutorStarted = false;
 
+    /**
+     * 传感器 SSE 每次推送的最大批量大小。
+     * 通过 batch 推送提升吞吐，避免本地队列积压导致“回放旧数据”。
+     */
+    private static final int SENSOR_SSE_BATCH_SIZE = 50;
+
     // 处理传感器消息
     private void processSensorMessages() {
         try {
-            SensorData sensorData = RabbitMQConsumer.MESSAGE_QUEUE.poll(100, TimeUnit.MILLISECONDS);
-            if (sensorData != null) {
-                String jsonData = objectMapper.writeValueAsString(sensorData);
-                log.debug("Sending sensorData: {}", jsonData);
-                SseEmitter.SseEventBuilder event = SseEmitter.event()
-                        .name("sensor-data")
-                        .data(jsonData);
-                sseManager.broadcast(SENSOR_DATA_TOPIC, event);
+            // 按批次推送：尽量把 MESSAGE_QUEUE 中的数据实时、完整地送到前端，避免积压
+            List<SensorData> batch = new ArrayList<>(SENSOR_SSE_BATCH_SIZE);
+
+            SensorData first = RabbitMQConsumer.MESSAGE_QUEUE.poll(100, TimeUnit.MILLISECONDS);
+            if (first == null) {
+                return;
             }
+            batch.add(first);
+
+            for (int i = 1; i < SENSOR_SSE_BATCH_SIZE; i++) {
+                SensorData next = RabbitMQConsumer.MESSAGE_QUEUE.poll();
+                if (next == null) {
+                    break;
+                }
+                batch.add(next);
+            }
+
+            String jsonData = objectMapper.writeValueAsString(batch);
+            log.debug("Sending sensorData batch size={}", batch.size());
+            SseEmitter.SseEventBuilder event = SseEmitter.event()
+                    .name("sensor-data")
+                    .data(jsonData);
+            sseManager.broadcast(SENSOR_DATA_TOPIC, event);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             log.info("Sensor message processing thread interrupted.");
@@ -278,7 +298,7 @@ public class GeometrySseController {
             GeometryResult geometryResult = RabbitMQConsumer.GEOMETRY_RESULT_QUEUE.poll(100, TimeUnit.MILLISECONDS);
             if (geometryResult != null) {
                 String jsonData = objectMapper.writeValueAsString(geometryResult);
-                log.debug("Sending geometryData: {}", jsonData);
+                log.info("[SSE-GEOMETRY][SEND-TO-FRONTEND] {}", jsonData);
                 SseEmitter.SseEventBuilder event = SseEmitter.event()
                         .name("geometry-data")
                         .data(jsonData);

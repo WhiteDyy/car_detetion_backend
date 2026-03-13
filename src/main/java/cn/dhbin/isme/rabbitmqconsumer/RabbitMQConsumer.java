@@ -22,7 +22,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 @Component
 public class RabbitMQConsumer {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
     private final SensorDataRepository sensorDataRepository;
     private final GeometryResultRepository geometryResultRepository;
     private final SensorStatusRepository sensorStatusRepository;
@@ -41,10 +41,12 @@ public class RabbitMQConsumer {
     public static final BlockingQueue<GeometryResult> GEOMETRY_RESULT_QUEUE = new LinkedBlockingQueue<>();
 
     @Autowired
-    public RabbitMQConsumer(SensorDataRepository sensorDataRepository,
+    public RabbitMQConsumer(ObjectMapper objectMapper,
+                            SensorDataRepository sensorDataRepository,
                             GeometryResultRepository geometryResultRepository,
                             SensorStatusRepository sensorStatusRepository,
                             JobIdManager jobIdManager) {
+        this.objectMapper = objectMapper;
         this.sensorDataRepository = sensorDataRepository;
         this.geometryResultRepository = geometryResultRepository;
         this.sensorStatusRepository = sensorStatusRepository;
@@ -56,6 +58,7 @@ public class RabbitMQConsumer {
     public void onRawSensorMessage(Message message, Channel channel) throws Exception {
         try {
             String messageBody = new String(message.getBody());
+            log.info("[MQ-RAW-SENSOR][RECEIVED] {}", messageBody);
             processRawSensorData(messageBody);
             channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
         } catch (Exception e) {
@@ -69,6 +72,7 @@ public class RabbitMQConsumer {
     public void onGeometryResultMessage(Message message, Channel channel) throws Exception {
         try {
             String messageBody = new String(message.getBody());
+            log.info("[MQ-GEOMETRY][RECEIVED] {}", messageBody);
             processGeometryResult(messageBody);
             channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
         } catch (Exception e) {
@@ -91,22 +95,78 @@ public class RabbitMQConsumer {
     }
 
     // 处理原始传感器数据
+    // 新协议字段映射说明：
+    // Python发送: time, sequence, groa, grob, codee40, codee41, codee42, dipmeter, 
+    //            gaccel_0, gaccel_1, gaccel_2, gaccel_3, length, imu_*, ins_*
+    // 前端期望: sequence, groa, grob, dipmeter, ga, gb, gc, cnt, startTime
     private void processRawSensorData(String messageBody) throws Exception {
         JsonNode jsonNode = objectMapper.readTree(messageBody);
 
         SensorData sensorData = new SensorData();
         
-        // 修复字段映射：Python发送的是扁平结构，直接读取
+        // === 基本字段（新旧协议通用）===
         sensorData.setSequence(jsonNode.has("sequence") ? jsonNode.get("sequence").asLong() : null);
         sensorData.setGroa(jsonNode.has("groa") ? jsonNode.get("groa").asInt() : null);
         sensorData.setGrob(jsonNode.has("grob") ? jsonNode.get("grob").asInt() : null);
         sensorData.setDipmeter(jsonNode.has("dipmeter") ? jsonNode.get("dipmeter").asDouble() : null);
-        sensorData.setCodee40(jsonNode.has("codee40") ? jsonNode.get("codee40").asInt() : null);
-        sensorData.setMileage(jsonNode.has("mileage") ? jsonNode.get("mileage").asInt() : null);
-        // 处理sleeper字段：float类型，代表电压
-        sensorData.setSleeper(jsonNode.has("sleeper") ? jsonNode.get("sleeper").asDouble() : null);
         
-        // 处理时间字段
+        // === 编码器字段 ===
+        // 新协议: codee40（编码器右）, codee41（编码器左）, codee42（编码器对齐）
+        if (jsonNode.has("codee40")) {
+            // codee40 是 int64（Java long），需要转为 int 给前端
+            long codee40Long = jsonNode.get("codee40").asLong();
+            sensorData.setCodee40((int) codee40Long);
+            // 同时设置 cnt 字段，供前端图表使用
+            sensorData.setCnt((int) codee40Long);
+        }
+        if (jsonNode.has("codee41")) {
+            long codee41Long = jsonNode.get("codee41").asLong();
+            sensorData.setCodee41((int) codee41Long);
+        }
+        if (jsonNode.has("codee42")) {
+            long codee42Long = jsonNode.get("codee42").asLong();
+            sensorData.setCodee42((int) codee42Long);
+        }
+        
+        // === 里程字段 ===
+        // 新协议使用 length 字段（替代旧协议的 mileage）
+        if (jsonNode.has("length")) {
+            sensorData.setMileage(jsonNode.get("length").asInt());
+        } else if (jsonNode.has("mileage")) {
+            // 兼容旧协议
+            sensorData.setMileage(jsonNode.get("mileage").asInt());
+        }
+        
+        // === 加速度/点激光/超声字段（映射到前端期望的 ga, gb, gc，并保留原始 gaccel_* 通道）===
+        // 新协议: gaccel_0（点激光右）, gaccel_1（点激光左）, gaccel_2（超声右）, gaccel_3（超声左）
+        // 前端期望: ga（横向加速度）, gb（横移加速度）, gc（沉浮加速度）
+        // 映射: gaccel_0 -> ga, gaccel_1 -> gb, gaccel_2 -> gc，同时在瞬时字段中保留 gaccel_0~3
+        if (jsonNode.has("gaccel_0")) {
+            double v = jsonNode.get("gaccel_0").asDouble();
+            sensorData.setGA(v);
+            sensorData.setGaccel0(v);
+        }
+        if (jsonNode.has("gaccel_1")) {
+            double v = jsonNode.get("gaccel_1").asDouble();
+            sensorData.setGB(v);
+            sensorData.setGaccel1(v);
+        }
+        if (jsonNode.has("gaccel_2")) {
+            double v = jsonNode.get("gaccel_2").asDouble();
+            sensorData.setGC(v);
+            sensorData.setGaccel2(v);
+        }
+        if (jsonNode.has("gaccel_3")) {
+            sensorData.setGaccel3(jsonNode.get("gaccel_3").asDouble());
+        }
+        
+        // === sleeper字段（新协议不再有此字段）===
+        // 保持兼容，如果有就设置
+        if (jsonNode.has("sleeper")) {
+            sensorData.setSleeper(jsonNode.get("sleeper").asDouble());
+        }
+        
+        // === 处理时间字段 ===
         if (jsonNode.has("time")) {
             try {
                 String timeStr = jsonNode.get("time").asText();
@@ -128,25 +188,31 @@ public class RabbitMQConsumer {
         
         // 获取当前任务ID并设置
         Long jobId = jobIdManager.getCurrentJobId();
-        if (jobId != null) {
+        boolean hasActiveJob = jobId != null;
+        if (hasActiveJob) {
             sensorData.setJobId(jobId);
         } else {
-            log.warn("当前没有活动的任务ID，传感器数据将不关联任务");
+            // 没有活动任务时，仍然允许前端实时查看曲线，但不做持久化
+            log.debug("当前没有活动的任务ID，本条原始传感器数据仅用于前端实时展示，不进行持久化");
         }
 
-        log.debug("Received sensor data: {}", sensorData);
+        log.debug("Received sensor data: seq={}, groa={}, grob={}, ga={}, gb={}, gc={}", 
+                sensorData.getSequence(), sensorData.getGroa(), sensorData.getGrob(),
+                sensorData.getGA(), sensorData.getGB(), sensorData.getGC());
 
-        // 将消息放入 BlockingQueue（用于前端展示）
+        // 将消息放入 BlockingQueue（用于前端展示，任务内外都可实时查看）
         MESSAGE_QUEUE.offer(sensorData);
 
-        // 批量持久化到数据库
-        synchronized (batch) {
-            batch.add(sensorData);
-            if (batch.size() >= BATCH_SIZE) {
-                sensorDataRepository.saveAll(batch);
-                sensorDataRepository.flush();
-                log.info("批量保存 {} 条原始传感器数据", batch.size());
-                batch.clear();
+        // 批量持久化到数据库（仅在有活动任务时）
+        if (hasActiveJob) {
+            synchronized (batch) {
+                batch.add(sensorData);
+                if (batch.size() >= BATCH_SIZE) {
+                    sensorDataRepository.saveAll(batch);
+                    sensorDataRepository.flush();
+                    log.info("批量保存 {} 条原始传感器数据", batch.size());
+                    batch.clear();
+                }
             }
         }
     }
@@ -155,11 +221,20 @@ public class RabbitMQConsumer {
     private void processGeometryResult(String messageBody) throws Exception {
         JsonNode jsonNode = objectMapper.readTree(messageBody);
 
-        // 获取当前任务ID
-        Long jobId = jobIdManager.getCurrentJobId();
-        if (jobId == null) {
-            log.warn("当前没有活动的任务ID，几何结果数据将不关联任务");
-            // 仍然处理数据，但不持久化
+        // 获取任务ID：优先使用消息中的job_id，如果没有则使用JobIdManager的当前值
+        Long jobId = null;
+        if (jsonNode.has("job_id") && !jsonNode.get("job_id").isNull()) {
+            // 优先使用消息中的job_id（Python端传递的）
+            jobId = jsonNode.get("job_id").asLong();
+            log.debug("从消息中获取任务ID: {}", jobId);
+        } else {
+            // 如果没有，则使用JobIdManager的当前值（向后兼容）
+            jobId = jobIdManager.getCurrentJobId();
+            if (jobId != null) {
+                log.debug("从JobIdManager获取任务ID: {}", jobId);
+            } else {
+                log.warn("消息中没有job_id字段，且当前没有活动的任务ID，几何结果数据将不关联任务");
+            }
         }
 
         // 创建用于前端展示的DTO对象
@@ -167,6 +242,12 @@ public class RabbitMQConsumer {
         geometryResult.setEncoder(jsonNode.has("encoder") ? jsonNode.get("encoder").asInt() : null);
 
         // 处理sensor_data部分
+        // 新协议字段映射：
+        // - gaccel_0/1/2/3 (点激光和超声) -> acc1/2/3
+        // - codee40/41/42 (编码器)
+        // - length (里程) -> mileage
+        // - imu_gyro_x/y/z (角速度) -> imuAngleX/Y/Z
+        // - imu_acc_x/y/z (加速度) -> imuAccX/Y/Z
         JsonNode sensorDataNode = jsonNode.get("sensor_data");
         if (sensorDataNode != null) {
             GeometrySensorData sensorData = new GeometrySensorData();
@@ -190,18 +271,70 @@ public class RabbitMQConsumer {
             sensorData.setGroa(sensorDataNode.has("groa") ? sensorDataNode.get("groa").asInt() : null);
             sensorData.setGrob(sensorDataNode.has("grob") ? sensorDataNode.get("grob").asInt() : null);
             sensorData.setDipmeter(sensorDataNode.has("dipmeter") ? sensorDataNode.get("dipmeter").asDouble() : null);
-            sensorData.setAcc1(sensorDataNode.has("acc1") ? sensorDataNode.get("acc1").asDouble() : null);
-            sensorData.setAcc2(sensorDataNode.has("acc2") ? sensorDataNode.get("acc2").asDouble() : null);
-            sensorData.setAcc3(sensorDataNode.has("acc3") ? sensorDataNode.get("acc3").asDouble() : null);
-            sensorData.setCodee40(sensorDataNode.has("codee40") ? sensorDataNode.get("codee40").asInt() : null);
-            // 处理sleeper字段：float类型，代表电压
+            
+            // 点激光/超声字段映射（新协议: gaccel_0/1/2/3，旧协议: acc1/2/3）
+            if (sensorDataNode.has("gaccel_0")) {
+                sensorData.setAcc1(sensorDataNode.get("gaccel_0").asDouble());
+            } else if (sensorDataNode.has("acc1")) {
+                sensorData.setAcc1(sensorDataNode.get("acc1").asDouble());
+            }
+            if (sensorDataNode.has("gaccel_1")) {
+                sensorData.setAcc2(sensorDataNode.get("gaccel_1").asDouble());
+            } else if (sensorDataNode.has("acc2")) {
+                sensorData.setAcc2(sensorDataNode.get("acc2").asDouble());
+            }
+            if (sensorDataNode.has("gaccel_2")) {
+                sensorData.setAcc3(sensorDataNode.get("gaccel_2").asDouble());
+            } else if (sensorDataNode.has("acc3")) {
+                sensorData.setAcc3(sensorDataNode.get("acc3").asDouble());
+            }
+            
+            // 编码器字段（新协议: codee40/41/42）
+            if (sensorDataNode.has("codee40")) {
+                long codee40Long = sensorDataNode.get("codee40").asLong();
+                sensorData.setCodee40((int) codee40Long);
+            }
+            if (sensorDataNode.has("codee41")) {
+                long codee41Long = sensorDataNode.get("codee41").asLong();
+                sensorData.setCodee41((int) codee41Long);
+            }
+            if (sensorDataNode.has("codee42")) {
+                long codee42Long = sensorDataNode.get("codee42").asLong();
+                sensorData.setCodee42((int) codee42Long);
+            }
+            
+            // 处理sleeper字段（旧协议）
             sensorData.setSleeper(sensorDataNode.has("sleeper") ? sensorDataNode.get("sleeper").asDouble() : null);
-            sensorData.setMileage(sensorDataNode.has("mileage") ? sensorDataNode.get("mileage").asInt() : null);
+            
+            // 里程字段（新协议: length，旧协议: mileage）
+            if (sensorDataNode.has("length")) {
+                sensorData.setMileage(sensorDataNode.get("length").asInt());
+            } else if (sensorDataNode.has("mileage")) {
+                sensorData.setMileage(sensorDataNode.get("mileage").asInt());
+            }
+            
+            // 兼容字段
             sensorData.setCodee40A(sensorDataNode.has("codee40_a") ? sensorDataNode.get("codee40_a").asInt() : null);
             sensorData.setCodee40B(sensorDataNode.has("codee40_b") ? sensorDataNode.get("codee40_b").asInt() : null);
-            sensorData.setImuAngleX(sensorDataNode.has("imu_angle_x") ? sensorDataNode.get("imu_angle_x").asDouble() : null);
-            sensorData.setImuAngleY(sensorDataNode.has("imu_angle_y") ? sensorDataNode.get("imu_angle_y").asDouble() : null);
-            sensorData.setImuAngleZ(sensorDataNode.has("imu_angle_z") ? sensorDataNode.get("imu_angle_z").asDouble(): null);
+            
+            // IMU角速度（新协议: imu_gyro_x/y/z）
+            if (sensorDataNode.has("imu_gyro_x")) {
+                sensorData.setImuAngleX(sensorDataNode.get("imu_gyro_x").asDouble());
+            } else if (sensorDataNode.has("imu_angle_x")) {
+                sensorData.setImuAngleX(sensorDataNode.get("imu_angle_x").asDouble());
+            }
+            if (sensorDataNode.has("imu_gyro_y")) {
+                sensorData.setImuAngleY(sensorDataNode.get("imu_gyro_y").asDouble());
+            } else if (sensorDataNode.has("imu_angle_y")) {
+                sensorData.setImuAngleY(sensorDataNode.get("imu_angle_y").asDouble());
+            }
+            if (sensorDataNode.has("imu_gyro_z")) {
+                sensorData.setImuAngleZ(sensorDataNode.get("imu_gyro_z").asDouble());
+            } else if (sensorDataNode.has("imu_angle_z")) {
+                sensorData.setImuAngleZ(sensorDataNode.get("imu_angle_z").asDouble());
+            }
+            
+            // IMU加速度
             sensorData.setImuAccX(sensorDataNode.has("imu_acc_x") ? sensorDataNode.get("imu_acc_x").asDouble() : null);
             sensorData.setImuAccY(sensorDataNode.has("imu_acc_y") ? sensorDataNode.get("imu_acc_y").asDouble() : null);
             sensorData.setImuAccZ(sensorDataNode.has("imu_acc_z") ? sensorDataNode.get("imu_acc_z").asDouble() : null);
@@ -228,15 +361,14 @@ public class RabbitMQConsumer {
 
         geometryResult.setTdf01Gauge(jsonNode.has("tdf01_gauge") ? jsonNode.get("tdf01_gauge").asDouble() : null);
         
-        // 处理track_geometry（应该是数组，不是字符串）
+        // 处理track_geometry（对象/数组原样透传给前端）
         JsonNode trackGeoNode = jsonNode.get("track_geometry");
-        if (trackGeoNode != null && trackGeoNode.isArray()) {
-            geometryResult.setTrackGeometry(objectMapper.writeValueAsString(trackGeoNode));
-        } else if (trackGeoNode != null) {
-            geometryResult.setTrackGeometry(trackGeoNode.asText());
+        if (trackGeoNode != null && !trackGeoNode.isNull()) {
+            geometryResult.setTrackGeometry(trackGeoNode);
         }
 
-        log.debug("Received geometry result: {}", geometryResult);
+        String parsedGeometryForQueue = objectMapper.writeValueAsString(geometryResult);
+        log.info("[MQ-GEOMETRY][PARSED-FOR-QUEUE] {}", parsedGeometryForQueue);
 
         // 将几何结果放入队列（用于前端展示）
         GEOMETRY_RESULT_QUEUE.offer(geometryResult);
@@ -373,10 +505,14 @@ public class RabbitMQConsumer {
                        (sensorStatus.getUltrasonicB() != null && sensorStatus.getUltrasonicB() == 1);
         sensorStatus.setAllOk(allOk);
         
-        // 立即保存到数据库（因为只在任务开始前接收一次）
-        sensorStatusRepository.save(sensorStatus);
-        sensorStatusRepository.flush();
-        log.info("已保存传感器状态数据，任务ID: {}, 所有设备正常: {}", sensorStatus.getJobId(), allOk);
+        // 只有存在有效任务ID时才保存到数据库，避免在未开始检测时产生无关联数据
+        if (sensorStatus.getJobId() != null) {
+            sensorStatusRepository.save(sensorStatus);
+            sensorStatusRepository.flush();
+            log.info("已保存传感器状态数据，任务ID: {}, 所有设备正常: {}", sensorStatus.getJobId(), allOk);
+        } else {
+            log.debug("当前没有活动任务ID，丢弃一条传感器状态数据，不进行持久化");
+        }
     }
 
     // 最终批量写入剩余数据

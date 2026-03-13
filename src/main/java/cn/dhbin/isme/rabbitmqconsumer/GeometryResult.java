@@ -1,9 +1,8 @@
 package cn.dhbin.isme.rabbitmqconsumer;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Data;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -12,5 +11,5 @@ public class GeometryResult {
     private GeometrySensorData sensorData;
     private List<Double> lsf01Level;
     private Double tdf01Gauge;
-    private String trackGeometry;
+    private JsonNode trackGeometry;
 }

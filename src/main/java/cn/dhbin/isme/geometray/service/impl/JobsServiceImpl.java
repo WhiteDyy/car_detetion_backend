@@ -64,7 +64,9 @@ public class JobsServiceImpl implements JobsService {
                 .eq(StrUtil.isNotBlank(request.getDeviceId()), Jobs::getDeviceId, request.getDeviceId())
                 .eq(StrUtil.isNotBlank(request.getOperator()), Jobs::getOperator, request.getOperator())
                 .like(StrUtil.isNotBlank(request.getDescription()), Jobs::getDescription, request.getDescription())
-                .eq(request.getCreatedAt() != null, Jobs::getCreatedAt, request.getCreatedAt());
+                .eq(request.getCreatedAt() != null, Jobs::getCreatedAt, request.getCreatedAt())
+                // 按 id 倒序排列，确保 id 越大的任务排在越前面
+                .orderByDesc(Jobs::getId);
 
         // 执行分页查询
         IPage<Jobs> jobsPage = getBaseMapper().selectPage(page, queryWrapper);

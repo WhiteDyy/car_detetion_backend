@@ -144,18 +144,6 @@ public class RailMeasurement {
     private Double trianglePit;
 
     /**
-     * 垂直磨耗，正线专用，记录正线轨道垂直磨耗值，道岔记录为空
-     */
-    @TableField("vertical_wear")
-    private Double verticalWear;
-
-    /**
-     * 侧面磨耗，正线专用，记录正线轨道侧面磨耗值，道岔记录为空
-     */
-    @TableField("lateral_wear")
-    private Double lateralWear;
-
-    /**
      * 测量时间，记录数据采集的日期和时间
      */
     @TableField("measurement_time")

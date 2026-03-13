@@ -38,8 +38,6 @@ public class RailMeasurementPageDto {
     private Double rightDirection;
     private Double horizontal;
     private Double trianglePit;
-    private Double verticalWear;
-    private Double lateralWear;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime measurementTime;
 }

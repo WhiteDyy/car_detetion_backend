@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/jobs")
 @RequiredArgsConstructor
@@ -180,8 +182,12 @@ public class JobsController {
             // 2. 设置当前任务ID
             jobIdManager.setCurrentJobId(savedJob.getId());
             
-            // 3. 发送开始采集命令到RabbitMQ（传递任务ID）
-            boolean sent = controlProducer.sendStartCommand(savedJob.getId());
+            // 3. 发送开始采集命令到RabbitMQ（传递任务ID和任务名称）
+            // 注意：jobId 是数据库主键，用于数据关联
+            //       taskName 是任务名称（jobName字段），用于Python端目录命名
+            //       这两个字段不要混淆！
+            String taskName = savedJob.getJobName();  // 任务名称用于目录命名
+            boolean sent = controlProducer.sendStartCommand(savedJob.getId(), taskName);
             if (!sent) {
                 R<Jobs> r = new R<>();
                 r.setCode(BizResponseCode.ERR_400.getCode());
@@ -189,6 +195,8 @@ public class JobsController {
                 r.setData(null);
                 return r;
             }
+            
+            log.info("开始采集命令已发送: jobId={}, taskName={}", savedJob.getId(), taskName);
             
             return R.ok(savedJob);
         } catch (Exception e) {

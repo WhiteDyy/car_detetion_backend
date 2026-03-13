@@ -10,7 +10,7 @@ spring:
       adjust-dates-to-context-time-zone: false
   rabbitmq:
 #    host: 49.235.164.252
-    host: 192.168.37.111
+    host: 192.168.3.28
     port: 5672
     username: admin
     password: admin
@@ -42,6 +42,8 @@ sa-token:
   jwt-secret-key: 'd0!doc15415B0*4G0`'
 logging:
   level:
+    root: INFO
+    cn.dhbin.isme: INFO
     cn.dev33: DEBUG
 knife4j:
   enable: true
