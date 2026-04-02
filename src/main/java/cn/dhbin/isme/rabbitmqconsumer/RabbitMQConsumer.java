@@ -104,19 +104,17 @@ public class RabbitMQConsumer {
 
         SensorData sensorData = new SensorData();
         
-        // === 基本字段（新旧协议通用）===
+        // === 基本字段（当前UDP协议）===
         sensorData.setSequence(jsonNode.has("sequence") ? jsonNode.get("sequence").asLong() : null);
-        sensorData.setGroa(jsonNode.has("groa") ? jsonNode.get("groa").asInt() : null);
-        sensorData.setGrob(jsonNode.has("grob") ? jsonNode.get("grob").asInt() : null);
+        sensorData.setGroa(jsonNode.has("groa") ? (int) Math.round(jsonNode.get("groa").asDouble()) : null);
+        sensorData.setGrob(jsonNode.has("grob") ? (int) Math.round(jsonNode.get("grob").asDouble()) : null);
         sensorData.setDipmeter(jsonNode.has("dipmeter") ? jsonNode.get("dipmeter").asDouble() : null);
         
         // === 编码器字段 ===
         // 新协议: codee40（编码器右）, codee41（编码器左）, codee42（编码器对齐）
         if (jsonNode.has("codee40")) {
-            // codee40 是 int64（Java long），需要转为 int 给前端
             long codee40Long = jsonNode.get("codee40").asLong();
             sensorData.setCodee40((int) codee40Long);
-            // 同时设置 cnt 字段，供前端图表使用
             sensorData.setCnt((int) codee40Long);
         }
         if (jsonNode.has("codee41")) {

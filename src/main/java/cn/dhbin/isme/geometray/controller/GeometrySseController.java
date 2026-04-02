@@ -256,7 +256,7 @@ public class GeometrySseController {
      * 传感器 SSE 每次推送的最大批量大小。
      * 通过 batch 推送提升吞吐，避免本地队列积压导致“回放旧数据”。
      */
-    private static final int SENSOR_SSE_BATCH_SIZE = 50;
+    private static final int SENSOR_SSE_BATCH_SIZE = 100;
 
     // 处理传感器消息
     private void processSensorMessages() {
