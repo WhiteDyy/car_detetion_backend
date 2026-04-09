@@ -2,8 +2,6 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="cn.dhbin.isme.geometray.mapper.JobsMapper">
     <resultMap id="BaseResultMap" type="cn.dhbin.isme.geometray.domain.entity.Jobs">
-        <!--@mbg.generated-->
-        <!--@Table jobs-->
         <id column="id" jdbcType="BIGINT" property="id"/>
         <result column="line_id" jdbcType="BIGINT" property="lineId"/>
         <result column="line_type" jdbcType="VARCHAR" property="lineType"/>
@@ -11,12 +9,16 @@
         <result column="job_name" jdbcType="VARCHAR" property="jobName"/>
         <result column="start_time" jdbcType="TIMESTAMP" property="startTime"/>
         <result column="end_time" jdbcType="TIMESTAMP" property="endTime"/>
-        <result column="device_id" jdbcType="VARCHAR" property="deviceId"/>
         <result column="operator" jdbcType="VARCHAR" property="operator"/>
         <result column="description" jdbcType="LONGVARCHAR" property="description"/>
         <result column="speed" jdbcType="VARCHAR" property="speed"/>
+        <result column="test_section" jdbcType="VARCHAR" property="testSection"/>
+        <result column="test_date" jdbcType="TIMESTAMP" property="testDate"/>
+        <result column="test_type" jdbcType="VARCHAR" property="testType"/>
+        <result column="sampling_frequency" jdbcType="INTEGER" property="samplingFrequency"/>
         <result column="created_at" jdbcType="TIMESTAMP" property="createdAt"/>
     </resultMap>
+
     <sql id="Base_Column_List">
         id,
         line_id,
@@ -25,204 +27,132 @@
         job_name,
         start_time,
         end_time,
-        device_id,
         `operator`,
         description,
         speed,
+        test_section,
+        test_date,
+        test_type,
+        sampling_frequency,
         created_at
     </sql>
+
     <select id="selectByPrimaryKey" parameterType="java.lang.Long" resultMap="BaseResultMap">
-        <!--@mbg.generated-->
         select
         <include refid="Base_Column_List"/>
         from jobs
         where id = #{id,jdbcType=BIGINT}
     </select>
+
     <delete id="deleteByPrimaryKey" parameterType="java.lang.Long">
-        <!--@mbg.generated-->
-        delete
-        from jobs
-        where id = #{id,jdbcType=BIGINT}
+        delete from jobs where id = #{id,jdbcType=BIGINT}
     </delete>
+
     <insert id="insert" keyColumn="id" keyProperty="id" parameterType="cn.dhbin.isme.geometray.domain.entity.Jobs"
             useGeneratedKeys="true">
-        <!--@mbg.generated-->
         insert into jobs (line_id, line_type, direction,
                           job_name, start_time, end_time,
-                          device_id, `operator`, description, speed,
+                          `operator`, description, speed,
+                          test_section, test_date, test_type, sampling_frequency,
                           created_at)
         values (#{lineId,jdbcType=BIGINT}, #{lineType,jdbcType=VARCHAR}, #{direction,jdbcType=VARCHAR},
                 #{jobName,jdbcType=VARCHAR}, #{startTime,jdbcType=TIMESTAMP}, #{endTime,jdbcType=TIMESTAMP},
-                #{deviceId,jdbcType=VARCHAR}, #{operator,jdbcType=VARCHAR}, #{description,jdbcType=LONGVARCHAR},
-                #{speed,jdbcType=VARCHAR}, #{createdAt,jdbcType=TIMESTAMP})
+                #{operator,jdbcType=VARCHAR}, #{description,jdbcType=LONGVARCHAR}, #{speed,jdbcType=VARCHAR},
+                #{testSection,jdbcType=VARCHAR}, #{testDate,jdbcType=TIMESTAMP}, #{testType,jdbcType=VARCHAR}, #{samplingFrequency,jdbcType=INTEGER},
+                #{createdAt,jdbcType=TIMESTAMP})
     </insert>
+
     <insert id="insertSelective" keyColumn="id" keyProperty="id"
             parameterType="cn.dhbin.isme.geometray.domain.entity.Jobs" useGeneratedKeys="true">
-        <!--@mbg.generated-->
         insert into jobs
         <trim prefix="(" suffix=")" suffixOverrides=",">
-            <if test="lineId != null">
-                line_id,
-            </if>
-            <if test="lineType != null">
-                line_type,
-            </if>
-            <if test="direction != null">
-                direction,
-            </if>
-            <if test="jobName != null">
-                job_name,
-            </if>
-            <if test="startTime != null">
-                start_time,
-            </if>
-            <if test="endTime != null">
-                end_time,
-            </if>
-            <if test="deviceId != null">
-                device_id,
-            </if>
-            <if test="operator != null">
-                `operator`,
-            </if>
-            <if test="description != null">
-                description,
-            </if>
-            <if test="speed != null">
-                speed,
-            </if>
-            <if test="createdAt != null">
-                created_at,
-            </if>
+            <if test="lineId != null">line_id,</if>
+            <if test="lineType != null">line_type,</if>
+            <if test="direction != null">direction,</if>
+            <if test="jobName != null">job_name,</if>
+            <if test="startTime != null">start_time,</if>
+            <if test="endTime != null">end_time,</if>
+            <if test="operator != null">`operator`,</if>
+            <if test="description != null">description,</if>
+            <if test="speed != null">speed,</if>
+            <if test="testSection != null">test_section,</if>
+            <if test="testDate != null">test_date,</if>
+            <if test="testType != null">test_type,</if>
+            <if test="samplingFrequency != null">sampling_frequency,</if>
+            <if test="createdAt != null">created_at,</if>
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
-            <if test="lineId != null">
-                #{lineId,jdbcType=BIGINT},
-            </if>
-            <if test="lineType != null">
-                #{lineType,jdbcType=VARCHAR},
-            </if>
-            <if test="direction != null">
-                #{direction,jdbcType=VARCHAR},
-            </if>
-            <if test="jobName != null">
-                #{jobName,jdbcType=VARCHAR},
-            </if>
-            <if test="startTime != null">
-                #{startTime,jdbcType=TIMESTAMP},
-            </if>
-            <if test="endTime != null">
-                #{endTime,jdbcType=TIMESTAMP},
-            </if>
-            <if test="deviceId != null">
-                #{deviceId,jdbcType=VARCHAR},
-            </if>
-            <if test="operator != null">
-                #{operator,jdbcType=VARCHAR},
-            </if>
-            <if test="description != null">
-                #{description,jdbcType=LONGVARCHAR},
-            </if>
-            <if test="speed != null">
-                #{speed,jdbcType=VARCHAR},
-            </if>
-            <if test="createdAt != null">
-                #{createdAt,jdbcType=TIMESTAMP},
-            </if>
+            <if test="lineId != null">#{lineId,jdbcType=BIGINT},</if>
+            <if test="lineType != null">#{lineType,jdbcType=VARCHAR},</if>
+            <if test="direction != null">#{direction,jdbcType=VARCHAR},</if>
+            <if test="jobName != null">#{jobName,jdbcType=VARCHAR},</if>
+            <if test="startTime != null">#{startTime,jdbcType=TIMESTAMP},</if>
+            <if test="endTime != null">#{endTime,jdbcType=TIMESTAMP},</if>
+            <if test="operator != null">#{operator,jdbcType=VARCHAR},</if>
+            <if test="description != null">#{description,jdbcType=LONGVARCHAR},</if>
+            <if test="speed != null">#{speed,jdbcType=VARCHAR},</if>
+            <if test="testSection != null">#{testSection,jdbcType=VARCHAR},</if>
+            <if test="testDate != null">#{testDate,jdbcType=TIMESTAMP},</if>
+            <if test="testType != null">#{testType,jdbcType=VARCHAR},</if>
+            <if test="samplingFrequency != null">#{samplingFrequency,jdbcType=INTEGER},</if>
+            <if test="createdAt != null">#{createdAt,jdbcType=TIMESTAMP},</if>
         </trim>
     </insert>
+
     <update id="updateByPrimaryKeySelective" parameterType="cn.dhbin.isme.geometray.domain.entity.Jobs">
-        <!--@mbg.generated-->
         update jobs
         <set>
-            <if test="lineId != null">
-                line_id = #{lineId,jdbcType=BIGINT},
-            </if>
-            <if test="lineType != null">
-                line_type = #{lineType,jdbcType=VARCHAR},
-            </if>
-            <if test="direction != null">
-                direction = #{direction,jdbcType=VARCHAR},
-            </if>
-            <if test="jobName != null">
-                job_name = #{jobName,jdbcType=VARCHAR},
-            </if>
-            <if test="startTime != null">
-                start_time = #{startTime,jdbcType=TIMESTAMP},
-            </if>
-            <if test="endTime != null">
-                end_time = #{endTime,jdbcType=TIMESTAMP},
-            </if>
-            <if test="deviceId != null">
-                device_id = #{deviceId,jdbcType=VARCHAR},
-            </if>
-            <if test="operator != null">
-                `operator` = #{operator,jdbcType=VARCHAR},
-            </if>
-            <if test="description != null">
-                description = #{description,jdbcType=LONGVARCHAR},
-            </if>
-            <if test="speed != null">
-                speed = #{speed,jdbcType=VARCHAR},
-            </if>
-            <if test="createdAt != null">
-                created_at = #{createdAt,jdbcType=TIMESTAMP},
-            </if>
+            <if test="lineId != null">line_id = #{lineId,jdbcType=BIGINT},</if>
+            <if test="lineType != null">line_type = #{lineType,jdbcType=VARCHAR},</if>
+            <if test="direction != null">direction = #{direction,jdbcType=VARCHAR},</if>
+            <if test="jobName != null">job_name = #{jobName,jdbcType=VARCHAR},</if>
+            <if test="startTime != null">start_time = #{startTime,jdbcType=TIMESTAMP},</if>
+            <if test="endTime != null">end_time = #{endTime,jdbcType=TIMESTAMP},</if>
+            <if test="operator != null">`operator` = #{operator,jdbcType=VARCHAR},</if>
+            <if test="description != null">description = #{description,jdbcType=LONGVARCHAR},</if>
+            <if test="speed != null">speed = #{speed,jdbcType=VARCHAR},</if>
+            <if test="testSection != null">test_section = #{testSection,jdbcType=VARCHAR},</if>
+            <if test="testDate != null">test_date = #{testDate,jdbcType=TIMESTAMP},</if>
+            <if test="testType != null">test_type = #{testType,jdbcType=VARCHAR},</if>
+            <if test="samplingFrequency != null">sampling_frequency = #{samplingFrequency,jdbcType=INTEGER},</if>
+            <if test="createdAt != null">created_at = #{createdAt,jdbcType=TIMESTAMP},</if>
         </set>
         where id = #{id,jdbcType=BIGINT}
     </update>
+
     <update id="updateByPrimaryKey" parameterType="cn.dhbin.isme.geometray.domain.entity.Jobs">
-        <!--@mbg.generated-->
         update jobs
-        set line_id     = #{lineId,jdbcType=BIGINT},
-            line_type   = #{lineType,jdbcType=VARCHAR},
-            direction   = #{direction,jdbcType=VARCHAR},
-            job_name    = #{jobName,jdbcType=VARCHAR},
-            start_time  = #{startTime,jdbcType=TIMESTAMP},
-            end_time    = #{endTime,jdbcType=TIMESTAMP},
-            device_id   = #{deviceId,jdbcType=VARCHAR},
-            `operator`  = #{operator,jdbcType=VARCHAR},
+        set line_id = #{lineId,jdbcType=BIGINT},
+            line_type = #{lineType,jdbcType=VARCHAR},
+            direction = #{direction,jdbcType=VARCHAR},
+            job_name = #{jobName,jdbcType=VARCHAR},
+            start_time = #{startTime,jdbcType=TIMESTAMP},
+            end_time = #{endTime,jdbcType=TIMESTAMP},
+            `operator` = #{operator,jdbcType=VARCHAR},
             description = #{description,jdbcType=LONGVARCHAR},
-            speed       = #{speed,jdbcType=VARCHAR},
-            created_at  = #{createdAt,jdbcType=TIMESTAMP}
+            speed = #{speed,jdbcType=VARCHAR},
+            test_section = #{testSection,jdbcType=VARCHAR},
+            test_date = #{testDate,jdbcType=TIMESTAMP},
+            test_type = #{testType,jdbcType=VARCHAR},
+            sampling_frequency = #{samplingFrequency,jdbcType=INTEGER},
+            created_at = #{createdAt,jdbcType=TIMESTAMP}
         where id = #{id,jdbcType=BIGINT}
     </update>
 
-       <select id="pageDetail" resultType="cn.dhbin.isme.geometray.domain.dto.JobsDto">
+    <select id="pageDetail" resultType="cn.dhbin.isme.geometray.domain.dto.JobsDto">
         SELECT
         <include refid="Base_Column_List"/>
         FROM jobs
         <where>
-            <if test="lineId != null">
-                AND line_id = #{lineId}
-            </if>
-            <if test="lineType != null">
-                AND line_type = #{lineType}
-            </if>
-            <if test="direction != null">
-                AND direction = #{direction}
-            </if>
-            <if test="jobName != null">
-                AND job_name = #{jobName}
-            </if>
-            <if test="startTime != null">
-                AND start_time = #{startTime}
-            </if>
-            <if test="endTime != null">
-                AND end_time = #{endTime}
-            </if>
-            <if test="deviceId != null">
-                AND device_id = #{deviceId}
-            </if>
-            <if test="operator != null">
-                AND operator = #{operator}
-            </if>
-            <if test="description != null">
-                AND description like CONCAT('%', #{description}, '%')
-            </if>
-            <if test="createdAt != null">
-                AND created_at = #{createdAt}
-            </if>
+            <if test="lineId != null">AND line_id = #{lineId}</if>
+            <if test="lineType != null">AND line_type = #{lineType}</if>
+            <if test="direction != null">AND direction = #{direction}</if>
+            <if test="jobName != null">AND job_name = #{jobName}</if>
+            <if test="startTime != null">AND start_time = #{startTime}</if>
+            <if test="endTime != null">AND end_time = #{endTime}</if>
+            <if test="operator != null">AND `operator` = #{operator}</if>
+            <if test="description != null">AND description like CONCAT('%', #{description}, '%')</if>
+            <if test="createdAt != null">AND created_at = #{createdAt}</if>
         </where>
     </select>
 </mapper>

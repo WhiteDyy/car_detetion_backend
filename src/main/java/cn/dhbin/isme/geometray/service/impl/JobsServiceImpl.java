@@ -61,7 +61,6 @@ public class JobsServiceImpl implements JobsService {
                 .eq(StrUtil.isNotBlank(request.getJobName()), Jobs::getJobName, request.getJobName())
                 .eq(request.getStartTime() != null, Jobs::getStartTime, request.getStartTime())
                 .eq(request.getEndTime() != null, Jobs::getEndTime, request.getEndTime())
-                .eq(StrUtil.isNotBlank(request.getDeviceId()), Jobs::getDeviceId, request.getDeviceId())
                 .eq(StrUtil.isNotBlank(request.getOperator()), Jobs::getOperator, request.getOperator())
                 .like(StrUtil.isNotBlank(request.getDescription()), Jobs::getDescription, request.getDescription())
                 .eq(request.getCreatedAt() != null, Jobs::getCreatedAt, request.getCreatedAt())

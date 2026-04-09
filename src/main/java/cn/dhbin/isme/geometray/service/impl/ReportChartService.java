@@ -187,7 +187,6 @@ public class ReportChartService {
         data.put("jobName", job.getJobName() != null ? job.getJobName() : "");
         data.put("lineType", job.getLineType() != null ? job.getLineType() : "");
         data.put("direction", job.getDirection() != null ? job.getDirection() : "");
-        data.put("deviceId", job.getDeviceId() != null ? job.getDeviceId() : "");
         data.put("operator", job.getOperator() != null ? job.getOperator() : "");
         data.put("description", job.getDescription() != null ? job.getDescription() : "");
         data.put("speed", job.getSpeed() != null ? job.getSpeed() : "");

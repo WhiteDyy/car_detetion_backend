@@ -55,11 +55,6 @@ public class Jobs implements Convert {
     private LocalDateTime endTime;
 
     /**
-     * 设备ID
-     */
-    private String deviceId;
-
-    /**
      * 操作人员
      */
     private String operator;
@@ -73,6 +68,26 @@ public class Jobs implements Convert {
      * 速度 (km/h)
      */
     private String speed;
+
+    /**
+     * 测试区间
+     */
+    private String testSection;
+
+    /**
+     * 测试日期
+     */
+    private LocalDateTime testDate;
+
+    /**
+     * 测试类型
+     */
+    private String testType;
+
+    /**
+     * 采样频率
+     */
+    private Integer samplingFrequency;
 
     /**
      * 记录创建时间

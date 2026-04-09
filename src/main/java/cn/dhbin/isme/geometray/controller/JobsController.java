@@ -123,9 +123,6 @@ public class JobsController {
             if (request.get("operator") != null) {
                 job.setOperator(request.get("operator").toString());
             }
-            if (request.get("deviceId") != null) {
-                job.setDeviceId(request.get("deviceId").toString());
-            }
             if (request.get("lineType") != null) {
                 job.setLineType(request.get("lineType").toString());
             }
@@ -134,6 +131,36 @@ public class JobsController {
             }
             if (request.get("speed") != null) {
                 job.setSpeed(request.get("speed").toString());
+            }
+            if (request.get("testSection") != null) {
+                job.setTestSection(request.get("testSection").toString());
+            }
+            if (request.get("testType") != null) {
+                job.setTestType(request.get("testType").toString());
+            }
+            if (request.get("samplingFrequency") != null) {
+                try {
+                    int sf = Integer.parseInt(request.get("samplingFrequency").toString());
+                    if (sf > 0) {
+                        job.setSamplingFrequency(sf);
+                    }
+                } catch (Exception ignore) {
+                }
+            }
+            if (request.get("testDate") != null) {
+                try {
+                    String testDateStr = request.get("testDate").toString();
+                    if (testDateStr.matches("^\\d{13}$")) {
+                        long millis = Long.parseLong(testDateStr);
+                        java.time.LocalDateTime ldt = java.time.Instant.ofEpochMilli(millis)
+                                .atZone(java.time.ZoneId.systemDefault())
+                                .toLocalDateTime();
+                        job.setTestDate(ldt);
+                    } else if (testDateStr.contains("T")) {
+                        job.setTestDate(java.time.LocalDateTime.parse(testDateStr.replace("Z", "")));
+                    }
+                } catch (Exception ignore) {
+                }
             }
             
             // 设置开始时间为当前时间（点击开始检测时的时间）
@@ -187,7 +214,11 @@ public class JobsController {
             //       taskName 是任务名称（jobName字段），用于Python端目录命名
             //       这两个字段不要混淆！
             String taskName = savedJob.getJobName();  // 任务名称用于目录命名
-            boolean sent = controlProducer.sendStartCommand(savedJob.getId(), taskName);
+            Integer samplingFrequency = savedJob.getSamplingFrequency();
+            if (samplingFrequency == null || samplingFrequency <= 0) {
+                samplingFrequency = 300;
+            }
+            boolean sent = controlProducer.sendStartCommand(savedJob.getId(), taskName, samplingFrequency);
             if (!sent) {
                 R<Jobs> r = new R<>();
                 r.setCode(BizResponseCode.ERR_400.getCode());
@@ -208,6 +239,41 @@ public class JobsController {
         }
     }
     
+    @PostMapping("/calibrate")
+    @Operation(summary = "触发标定")
+    public R<Void> calibrate(@RequestBody(required = false) Map<String, Object> request) {
+        try {
+            String taskName = "calibration";
+            Integer pulseCount = 500;
+            if (request != null) {
+                if (request.get("taskName") != null && !request.get("taskName").toString().trim().isEmpty()) {
+                    taskName = request.get("taskName").toString().trim();
+                }
+            }
+
+            Object featurePoints = null;
+            if (request != null && request.get("featurePoints") != null) {
+                featurePoints = request.get("featurePoints");
+            }
+
+            boolean sent = controlProducer.sendCalibrateCommand(taskName, pulseCount, featurePoints);
+            if (!sent) {
+                R<Void> r = new R<>();
+                r.setCode(BizResponseCode.ERR_400.getCode());
+                r.setMessage("发送标定命令失败");
+                r.setData(null);
+                return r;
+            }
+            return R.ok(null);
+        } catch (Exception e) {
+            R<Void> r = new R<>();
+            r.setCode(BizResponseCode.ERR_400.getCode());
+            r.setMessage("触发标定失败: " + e.getMessage());
+            r.setData(null);
+            return r;
+        }
+    }
+
     @PostMapping("/create")
     @Operation(summary = "创建新任务")
     public R<Jobs> createJob(@RequestBody Map<String, Object> request) {
@@ -219,9 +285,6 @@ public class JobsController {
             if (request.get("operator") != null) {
                 job.setOperator(request.get("operator").toString());
             }
-            if (request.get("deviceId") != null) {
-                job.setDeviceId(request.get("deviceId").toString());
-            }
             if (request.get("lineType") != null) {
                 job.setLineType(request.get("lineType").toString());
             }
@@ -230,6 +293,36 @@ public class JobsController {
             }
             if (request.get("speed") != null) {
                 job.setSpeed(request.get("speed").toString());
+            }
+            if (request.get("testSection") != null) {
+                job.setTestSection(request.get("testSection").toString());
+            }
+            if (request.get("testType") != null) {
+                job.setTestType(request.get("testType").toString());
+            }
+            if (request.get("samplingFrequency") != null) {
+                try {
+                    int sf = Integer.parseInt(request.get("samplingFrequency").toString());
+                    if (sf > 0) {
+                        job.setSamplingFrequency(sf);
+                    }
+                } catch (Exception ignore) {
+                }
+            }
+            if (request.get("testDate") != null) {
+                try {
+                    String testDateStr = request.get("testDate").toString();
+                    if (testDateStr.matches("^\\d{13}$")) {
+                        long millis = Long.parseLong(testDateStr);
+                        java.time.LocalDateTime ldt = java.time.Instant.ofEpochMilli(millis)
+                                .atZone(java.time.ZoneId.systemDefault())
+                                .toLocalDateTime();
+                        job.setTestDate(ldt);
+                    } else if (testDateStr.contains("T")) {
+                        job.setTestDate(java.time.LocalDateTime.parse(testDateStr.replace("Z", "")));
+                    }
+                } catch (Exception ignore) {
+                }
             }
             if (request.get("description") != null) {
                 job.setDescription(request.get("description").toString());
