@@ -70,6 +70,10 @@ public class RabbitMQControlProducer {
     }
 
     public boolean sendStartCommand(Long jobId, String taskName, Integer samplingFrequency) {
+        return sendStartCommand(jobId, taskName, samplingFrequency, null);
+    }
+
+    public boolean sendStartCommand(Long jobId, String taskName, Integer samplingFrequency, String testType) {
         try {
             Map<String, Object> command = new HashMap<>();
             command.put("command", "start");
@@ -89,10 +93,14 @@ public class RabbitMQControlProducer {
                 command.put("samplingFrequency", samplingFrequency);
             }
 
+            if (testType != null && !testType.trim().isEmpty()) {
+                command.put("testType", testType.trim());
+            }
+
             String message = objectMapper.writeValueAsString(command);
             rabbitTemplate.convertAndSend(CONTROL_QUEUE_NAME, message);
-            log.info("已发送开始采集命令到队列: {}，任务ID: {}，任务名称: {}，采样频率: {}",
-                    CONTROL_QUEUE_NAME, jobId, taskName, samplingFrequency);
+            log.info("已发送开始采集命令到队列: {}，任务ID: {}，任务名称: {}，采样频率: {}，测试类型: {}",
+                    CONTROL_QUEUE_NAME, jobId, taskName, samplingFrequency, testType);
             return true;
         } catch (Exception e) {
             log.error("发送开始采集命令失败: {}", e.getMessage(), e);
@@ -170,6 +178,7 @@ public class RabbitMQControlProducer {
     public boolean sendTurnoutConfigCommand(String turnoutName,
                                             String batchName,
                                             java.time.LocalDateTime recordedAt,
+                                            Integer samplingFrequency,
                                             String remark,
                                             Object nodes) {
         try {
@@ -178,6 +187,7 @@ public class RabbitMQControlProducer {
             command.put("turnoutName", turnoutName);
             command.put("batchName", batchName);
             command.put("recordedAt", recordedAt == null ? null : recordedAt.toString());
+            command.put("samplingFrequency", samplingFrequency == null || samplingFrequency <= 0 ? 5000 : samplingFrequency);
             command.put("remark", remark);
             command.put("nodes", nodes);
 

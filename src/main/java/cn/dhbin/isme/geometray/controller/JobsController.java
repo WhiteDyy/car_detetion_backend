@@ -215,10 +215,11 @@ public class JobsController {
             //       这两个字段不要混淆！
             String taskName = savedJob.getJobName();  // 任务名称用于目录命名
             Integer samplingFrequency = savedJob.getSamplingFrequency();
+            String testType = savedJob.getTestType();
             if (samplingFrequency == null || samplingFrequency <= 0) {
                 samplingFrequency = 300;
             }
-            boolean sent = controlProducer.sendStartCommand(savedJob.getId(), taskName, samplingFrequency);
+            boolean sent = controlProducer.sendStartCommand(savedJob.getId(), taskName, samplingFrequency, testType);
             if (!sent) {
                 R<Jobs> r = new R<>();
                 r.setCode(BizResponseCode.ERR_400.getCode());

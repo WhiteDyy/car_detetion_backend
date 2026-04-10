@@ -24,6 +24,8 @@ public class SwitchManualBatch implements Convert {
 
     private LocalDateTime recordedAt;
 
+    private Integer samplingFrequency;
+
     private String remark;
 
     private String nodesJson;

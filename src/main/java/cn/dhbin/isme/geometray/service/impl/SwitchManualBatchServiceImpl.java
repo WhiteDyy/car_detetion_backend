@@ -44,6 +44,7 @@ public class SwitchManualBatchServiceImpl implements SwitchManualBatchService {
         String turnoutName = toStr(payload.get("turnoutName"));
         String remark = toStr(payload.get("remark"));
         LocalDateTime recordedAt = parseRecordedAt(payload.get("recordedAt"));
+        Integer samplingFrequency = parsePositiveInt(payload.get("samplingFrequency"), 300);
 
         List<Map<String, Object>> nodes = new ArrayList<>();
         Object nodesObj = payload.get("nodes");
@@ -64,6 +65,7 @@ public class SwitchManualBatchServiceImpl implements SwitchManualBatchService {
             entity.setBatchName(batchName);
             entity.setTurnoutName(turnoutName);
             entity.setRecordedAt(recordedAt);
+            entity.setSamplingFrequency(samplingFrequency);
             entity.setRemark(remark);
             entity.setNodesJson(nodesJson);
             entity.setCreatedAt(LocalDateTime.now());
@@ -75,6 +77,7 @@ public class SwitchManualBatchServiceImpl implements SwitchManualBatchService {
                     turnoutName,
                     batchName,
                     recordedAt,
+                    samplingFrequency,
                     remark,
                     nodes
             );
@@ -127,6 +130,7 @@ public class SwitchManualBatchServiceImpl implements SwitchManualBatchService {
                 + "batch_name VARCHAR(128) NOT NULL,"
                 + "turnout_name VARCHAR(128) NOT NULL,"
                 + "recorded_at DATETIME NOT NULL,"
+                + "sampling_frequency INT NOT NULL DEFAULT 300,"
                 + "remark TEXT NULL,"
                 + "nodes_json LONGTEXT NOT NULL,"
                 + "created_at DATETIME NOT NULL"
@@ -168,6 +172,18 @@ public class SwitchManualBatchServiceImpl implements SwitchManualBatchService {
             return LocalDateTime.parse(s.replace("Z", ""));
         } catch (Exception e) {
             return LocalDateTime.now();
+        }
+    }
+
+    private Integer parsePositiveInt(Object value, int defaultValue) {
+        if (value == null) {
+            return defaultValue;
+        }
+        try {
+            int parsed = Integer.parseInt(String.valueOf(value).trim());
+            return parsed > 0 ? parsed : defaultValue;
+        } catch (Exception e) {
+            return defaultValue;
         }
     }
 }
